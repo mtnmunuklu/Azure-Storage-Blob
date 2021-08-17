@@ -21,4 +21,5 @@ class Config:
     OUTPUT = os.getenv('OUTPUT')
     DECOMPRESS_OUTPUT = os.getenv('DECOMPRESS_OUTPUT')
     MAXRETY = int(os.getenv('MAXRETY'))
+    BLOB_PREFIX = os.getenv('BLOB_PREFIX')
 

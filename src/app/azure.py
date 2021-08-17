@@ -25,6 +25,7 @@ class AzureBlob:
         self.output = Config.OUTPUT
         self.outputd = Config.DECOMPRESS_OUTPUT
         self.max_retry = Config.MAXRETY
+        self.blob_prefix = Config.BLOB_PREFIX
         self.logger = Logger('File')
 
     def download_azure_blob(self):
@@ -38,7 +39,7 @@ class AzureBlob:
             blob_service_client = BlockBlobService(account_name=self.storage_account_name, account_key=self.storage_account_key)
             blob_service_client._httpclient = ExampleRawBodyReadingClient(session=requests.session(), protocol="https", timeout=2000)
             #List blobs in storage account
-            for blob in blob_service_client.list_blobs(container_name=self.container_name, prefix="logs/"+log_date):
+            for blob in blob_service_client.list_blobs(container_name=self.container_name, prefix=self.blob_prefix + log_date):
                 for retry in range(1, self.max_retry + 1):   
                     try:
                         # If blob_name is a path, extract the file_name
