@@ -53,7 +53,7 @@ class AzureBlob:
                                 file_path=download_path, validate_content=True)
                         self.gunzip_file(file_name, download_path, retry)
                         #delete blob
-                        #blob_service_client.delete_blob(container_name=self.container_name, blob_name=blob.name)
+                        blob_service_client.delete_blob(container_name=self.container_name, blob_name=blob.name)
                         self.logger.log(logging.WARNING, "Azure Blob download successful, Blob Name:{}".format(blob.name))
                         break
                     except Exception as e:
