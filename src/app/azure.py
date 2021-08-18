@@ -1,6 +1,7 @@
-
 import os
+import time
 import logging
+from azure.storage.blob.models import Include
 import requests
 import gzip
 import shutil
@@ -34,31 +35,31 @@ class AzureBlob:
         :return: None
         """
         try:
-            yesterday = datetime.now() - timedelta(1)
-            log_date = datetime.strftime(yesterday, '%Y%m%d')
+            today = datetime.now()
+            log_date = datetime.strftime(today, '%Y%m%d')
             blob_service_client = BlockBlobService(account_name=self.storage_account_name, account_key=self.storage_account_key)
             blob_service_client._httpclient = ExampleRawBodyReadingClient(session=requests.session(), protocol="https", timeout=2000)
             #List blobs in storage account
             for blob in blob_service_client.list_blobs(container_name=self.container_name, prefix=self.blob_prefix + log_date):
-                for retry in range(1, self.max_retry + 1):   
-                    try:
-                        # If blob_name is a path, extract the file_name
-                        last_sep = blob.name.rfind('/')
-                        if last_sep != -1:
-                            file_name = blob.name[last_sep+1:]
-                        else:
-                            file_name = blob.name
-                        download_path = os.path.join(self.output, file_name)
-                        blob_service_client.get_blob_to_path(container_name=self.container_name, blob_name=blob.name,
-                                file_path=download_path, validate_content=True)
-                        self.gunzip_file(file_name, download_path, retry)
-                        #delete blob
-                        blob_service_client.delete_blob(container_name=self.container_name, blob_name=blob.name)
-                        self.logger.log(logging.WARNING, "Azure Blob download successful, Blob Name:{}".format(blob.name))
-                        break
-                    except Exception as e:
-                        self.logger.log(logging.WARNING, "Rety:{} Azure Blog download unsuccessful, Blob Name:{}".format(retry, blob.name))
-                        self.logger.log(logging.ERROR, e)  
+                if blob_service_client.exists(container_name=self.container_name, blob_name=blob.name):
+                    for retry in range(1, self.max_retry + 1):   
+                        try:
+                            file_date = datetime.now()
+                            file_name = "cloudflare-" + datetime.strftime(file_date, '%Y%m%d%H%M%S') + '.log.gz'
+                            download_path = os.path.join(self.output, file_name)
+                            blob_service_client.get_blob_to_path(container_name=self.container_name, blob_name=blob.name,
+                                    file_path=download_path, validate_content=True)
+                            self.logger.log(logging.INFO, "Azure Blob download successful, Blob Name:{}".format(blob.name))
+                            self.gunzip_file(file_name, download_path, retry)
+                            self.remove_file(download_path)
+                            #delete blob
+                            #blob_service_client.delete_blob(container_name=self.container_name, blob_name=blob.name)
+                            #self.logger.log(logging.INFO, "Azure Blob remove successful, Blob Name:{}".format(blob.name))
+                            break
+                        except Exception as e:
+                            self.logger.log(logging.WARNING, "Rety:{} Azure Blog download unsuccessful, Blob Name:{}".format(retry, blob.name))
+                            self.logger.log(logging.ERROR, e)
+                    time.sleep(1)
         except Exception as e:
             self.logger.log(logging.WARNING, "Blob downloads unsuccessful")
             self.logger.log(logging.ERROR, e)
@@ -66,8 +67,18 @@ class AzureBlob:
     def gunzip_file(self, file_name, download_path, retry):
         try:
             with gzip.open(download_path, 'rb') as f_in:
-                with open(self.outputd + file_name.strip('gz'), 'wb') as f_out:
+                with open(self.outputd + file_name.replace('.gz',''), 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
+            self.logger.log(logging.INFO, "Gunzip is successful, File Name:{}".format(file_name))
         except Exception as e:
             self.logger.log(logging.WARNING, "Rety:{} Gunzip Error, File Name:{}".format(retry, file_name))
+            self.logger.log(logging.ERROR, e)
+
+    def remove_file(self, download_path):
+        try:
+            if os.path.exists(download_path):
+                os.remove(download_path)
+            self.logger.log(logging.INFO, "File remove is successful, File Path:{}".format(download_path))
+        except Exception as e:
+            self.logger.log(logging.WARNING, "File Remove Error, Path:{}".format(download_path))
             self.logger.log(logging.ERROR, e)
