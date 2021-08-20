@@ -13,6 +13,7 @@ class Config:
     """
 
     # Load in environment variables
+    LOG_DIR = os.getenv('LOG_DIR')
     LOG_FILE = os.getenv('LOG_FILE')
     LOG_FORMAT = os.getenv('LOG_FORMAT')
     STORAGE_ACCOUNT_NAME = os.getenv('STORAGE_ACCOUNT_NAME')
@@ -20,6 +21,9 @@ class Config:
     CONTANINER_NAME = os.getenv('CONTANINER_NAME')
     OUTPUT = os.getenv('OUTPUT')
     DECOMPRESS_OUTPUT = os.getenv('DECOMPRESS_OUTPUT')
-    MAXRETY = int(os.getenv('MAXRETY'))
     BLOB_PREFIX = os.getenv('BLOB_PREFIX')
+    LAST_LOG_HOURS = int(os.getenv('LAST_LOG_HOURS'))
+    MAXRETY = int(os.getenv('MAXRETY'))
+    
+
 

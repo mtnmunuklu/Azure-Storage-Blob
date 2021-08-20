@@ -15,6 +15,7 @@ class Logger:
         :param log_type: type of log(database or webcrawler vs.)
         """
         self.log_type = log_type
+        self.log_dir = Config.LOG_DIR
         self.log_file = Config.LOG_FILE
         self.log_format = Config.LOG_FORMAT
         self.close_log()
@@ -37,8 +38,8 @@ class Logger:
         Configuration for logging
         :return:
         """
-        if not os.path.exists("logs"):
-            os.makedirs("logs")
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
         # create logger
         logger = logging.getLogger(self.log_type)

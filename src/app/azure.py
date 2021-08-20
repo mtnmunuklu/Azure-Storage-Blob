@@ -25,8 +25,9 @@ class AzureBlob:
         self.container_name = Config.CONTANINER_NAME
         self.output = Config.OUTPUT
         self.outputd = Config.DECOMPRESS_OUTPUT
-        self.max_retry = Config.MAXRETY
         self.blob_prefix = Config.BLOB_PREFIX
+        self.last_log_hours = Config.LAST_LOG_HOURS
+        self.max_retry = Config.MAXRETY
         self.logger = Logger('File')
 
     def download_azure_blob(self):
@@ -35,12 +36,17 @@ class AzureBlob:
         :return: None
         """
         try:
-            today = datetime.now()
-            log_date = datetime.strftime(today, '%Y%m%d')
             blob_service_client = BlockBlobService(account_name=self.storage_account_name, account_key=self.storage_account_key)
-            blob_service_client._httpclient = ExampleRawBodyReadingClient(session=requests.session(), protocol="https", timeout=2000)
+            blob_service_client._httpclient = ExampleRawBodyReadingClient(session=requests.session(), protocol="https", timeout=500)
+            today = datetime.now()
+            #log_date = datetime.strftime(today, '%Y%m%d')
+            #To go back an hour and get the log
+            first_log_date = datetime.strftime(today - timedelta(hours=self.last_log_hours), '%Y%m%dT%H')
+            first_log_date_directory = datetime.strftime(today - timedelta(hours=self.last_log_hours), '%Y%m%d')
+            prefix = self.blob_prefix + first_log_date_directory + "/" + first_log_date
+            for blob in blob_service_client.list_blobs(container_name=self.container_name, prefix=prefix):
             #List blobs in storage account
-            for blob in blob_service_client.list_blobs(container_name=self.container_name, prefix=self.blob_prefix + log_date):
+            #for blob in blob_service_client.list_blobs(container_name=self.container_name, prefix=self.blob_prefix + log_date):
                 if blob_service_client.exists(container_name=self.container_name, blob_name=blob.name):
                     for retry in range(1, self.max_retry + 1):   
                         try:
@@ -53,13 +59,15 @@ class AzureBlob:
                             self.gunzip_file(file_name, download_path, retry)
                             self.remove_file(download_path)
                             #delete blob
-                            #blob_service_client.delete_blob(container_name=self.container_name, blob_name=blob.name)
-                            #self.logger.log(logging.INFO, "Azure Blob remove successful, Blob Name:{}".format(blob.name))
+                            blob_service_client.delete_blob(container_name=self.container_name, blob_name=blob.name)
+                            self.logger.log(logging.INFO, "Azure Blob remove successful, Blob Name:{}".format(blob.name))
                             break
                         except Exception as e:
                             self.logger.log(logging.WARNING, "Rety:{} Azure Blog download unsuccessful, Blob Name:{}".format(retry, blob.name))
                             self.logger.log(logging.ERROR, e)
-                    time.sleep(1)
+                    time.sleep(0.5)
+                else:
+                   self.logger.log(logging.WARNING, "Blob does not exists. Blob Name:{}".format(blob.name)) 
         except Exception as e:
             self.logger.log(logging.WARNING, "Blob downloads unsuccessful")
             self.logger.log(logging.ERROR, e)
